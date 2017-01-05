@@ -138,6 +138,7 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
     
     // 歩数取得関連
     var stepEnableFlag: Bool = true
+    var stepFileHandleFlag: Bool = true
     var pedometer: CMPedometer!
     var startDate: Date!
     var fileNameStep: String = ""
@@ -190,8 +191,8 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         fileNameSP =  base + ".mic"
         fileNameSPFull = documentDirectory + "/" + fileNameSP
         
-        if stepEnableFlag {
-            fileNameStep = base + ".stp"
+        if stepEnableFlag && stepFileHandleFlag {
+            fileNameStep = subjectNo.text! + "_" + currentFilePrefix + ".stp"
             fileNameStepFull = documentDirectory + "/" + fileNameStep
         }
 
@@ -225,7 +226,7 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         fileHandleSP?.seekToEndOfFile()
         
         // 歩数記録用
-        if stepEnableFlag {
+        if stepEnableFlag && stepFileHandleFlag {
             let text4 = "date,steps\n"
             do {
                 try text4.write(toFile: fileNameStepFull, atomically: true, encoding: String.Encoding.utf8)
@@ -233,6 +234,7 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
             }
             fileHandleStep = FileHandle(forWritingAtPath: fileNameStepFull)
             fileHandleStep?.seekToEndOfFile()
+            stepFileHandleFlag = false
         }
     }
 
@@ -586,6 +588,7 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
 
         // 歩数取得開始
         if stepEnableFlag {
+            stepFileHandleFlag = true
             // 開始日時を保存
             startDate = Date()
             getSteps()
