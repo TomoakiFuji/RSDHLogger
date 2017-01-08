@@ -74,10 +74,13 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
 
     @IBOutlet var startRecordingButton: UIButton!
     @IBOutlet var stopRecordingButton: UIButton!
-
+    
     // 音声録音on/offスイッチ
     @IBOutlet var recVoice: UISwitch!
 
+    // マイク位置 上/下 設定ボタン
+    @IBOutlet var micPosition: UISegmentedControl!
+    
     // bluetoothセントラルマネージャを作成する
     var centralManager: CBCentralManager!
     
@@ -168,6 +171,18 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
                           handler: nil ))
         present(alert, animated: true, completion: nil )
     }
+    
+    // アラート表示
+    func dispAlert2() {
+        let alert = UIAlertController(title: "ログ記録開始できません",
+                                      message: "マイク接続位置を設定してください",
+                                      preferredStyle: UIAlertControllerStyle.alert)
+        alert.addAction(
+            UIAlertAction(title: "OK",
+                          style: UIAlertActionStyle.default,
+                          handler: nil ))
+        present(alert, animated: true, completion: nil )
+    }
 
     // ファイル名をセットしてファイルハンドルを作成
     func makeFileHandle(fileIndexLocal: Int) {
@@ -242,6 +257,16 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
     func detectAcc() {
         let data = motion.accelerometerData
         
+        var accDataX = data!.acceleration.x
+        var accDataY = data!.acceleration.y
+        let accDataZ = data!.acceleration.z
+
+        // マイク接続位置が下の場合
+        if micPosition.selectedSegmentIndex == 1 {
+            accDataX *= -1
+            accDataY *= -1
+        }
+
         if isRecording == true {
             let date = Date()
             let dateString = dateFormatter.string(from: date)
@@ -251,9 +276,9 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
                 let text = NSString(format: "%@,%10.5f,%f,%f,%f\n",
                                                 dateString,
                                                 epochTime,
-                                                data!.acceleration.x,
-                                                data!.acceleration.y,
-                                                data!.acceleration.z
+                                                accDataX,
+                                                accDataY,
+                                                accDataZ
                 )
                 if let d = text.data(using: String.Encoding.utf8.rawValue) {
                     handle.write(d)
@@ -568,8 +593,13 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
     
     // ログ記録開始
     @IBAction func startRecorging(_ sender: AnyObject) {
-        if (subjectNo.text == "") {
+        if subjectNo.text == "" {
             dispAlert()
+            return
+        }
+        
+        if micPosition.selectedSegmentIndex < 0 {
+            dispAlert2()
             return
         }
 
@@ -582,6 +612,8 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
 
         index = 0
         recVoice.isEnabled = false
+        micPosition.isEnabled = false
+        subjectNo.isEnabled = false
 
         fileIndex = 1
         makeFileHandle(fileIndexLocal: fileIndex)
@@ -647,6 +679,8 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         fileHandleCloseAndUploadFile()
 
         recVoice.isEnabled = true
+        micPosition.isEnabled = true
+        subjectNo.isEnabled = true
 
         // インジケーターを消す
         hideIndicator()
@@ -723,8 +757,13 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         
         // 音声録音可否ボタンの設置値記憶
         UserDefaults.standard.set(recVoice.isOn, forKey: "recVoice")
+        
+        // マイク接続位置の設置値記憶
+        if micPosition.selectedSegmentIndex >= 0 {
+            UserDefaults.standard.set(micPosition.selectedSegmentIndex, forKey: "micPosition")
+        }
     }
-    
+
     // 歩数取得
     func getSteps() {
         self.stepLabel.text = "0"
@@ -764,14 +803,17 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         
         // 設定値呼び出し（保存している場合）
         if( UserDefaults.standard.object(forKey: "subjectNo") != nil ) {
-            subjectNo.text = UserDefaults.standard.object(forKey: "subjectNo")! as? String
+            subjectNo.text = UserDefaults.standard.object(forKey: "subjectNo") as! String?
         }
         if( UserDefaults.standard.object(forKey: "thresholdText") != nil ) {
-            thresholdText.text = UserDefaults.standard.object(forKey: "thresholdText")! as? String
+            thresholdText.text = UserDefaults.standard.object(forKey: "thresholdText") as! String?
             thresholdVolume = Float32(thresholdText.text!)!
         }
         if( UserDefaults.standard.object(forKey: "recVoice") != nil ) {
-            recVoice.isOn = UserDefaults.standard.object(forKey: "recVoice")! as! Bool
+            recVoice.isOn = UserDefaults.standard.object(forKey: "recVoice") as! Bool
+        }
+        if( UserDefaults.standard.object(forKey: "micPosition") != nil ) {
+            micPosition.selectedSegmentIndex = UserDefaults.standard.object(forKey: "micPosition") as! Int
         }
 
         // リターンキー押下でキーボードを閉じる
